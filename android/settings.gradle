@@ -1,0 +1,6 @@
+rootProject.name = 'SuspensionOptimiser'
+
+include ':app'
+
+include ':react-native-android-btserial'
+project(':react-native-android-btserial').projectDir = new File(settingsDir, '../node_modules/react-native-android-btserial')
