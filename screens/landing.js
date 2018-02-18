@@ -3,53 +3,67 @@ import {
     StyleSheet,
     Text,
     View,
-    Button
+    Button,
+    Alert,
+    StatusBar
 } from 'react-native';
 import BTSerial  from 'react-native-android-btserial'
+import * as colours from '../colours'
+import LottieView from 'lottie-react-native';
 
-type Props = {};
+export default class Landing extends React.Component {
 
-export default class Landing extends Component<Props> {
+    static navigationOptions = {
+        title: 'Welcome',
+        headerStyle: {
+            backgroundColor: colours.mainColour,
+        },
+        headerTintColor: colours.textColour,
+        headerTitleStyle: {
+            fontWeight: '100',
+        },
+    };
 
     constructor(props) {
         super(props);
-        this.state = {
-            bluetoothEnabled: false
-        };
     }
 
     componentDidMount() {
-        BTSerial.isEnabled((err, enabled) => {
-            console.log(err);
-            if (err)
-                return;
-            console.log(enabled);
-            this.setState({bluetoothEnabled: enabled});
-        })
+        this.animation.play();
     }
 
-    enableBluetooth() {
-        console.log('Enabling bluetooth');
+    startButton() {
+        BTSerial.isEnabled((err, enabled) => {
+            let resultScreen = 'BlueTooth';
+            if (!err && !enabled || true)
+                resultScreen = 'Connect';
 
-        BTSerial.enableBT((err, enabled) => {
-            this.setState({bluetoothEnabled: enabled});
-            if (err || !enabled) {
-                BTSerial.showBTSettings()
-            }
-        })
-    };
+            this.props.navigation.navigate(resultScreen);
+        });
+    }
 
     render() {
         return (
             <View style={styles.container}>
-                <Text style={styles.welcome}>
-                    Suspension Optimiser
-                </Text>
-                <Text>Bluetooth enabled {(this.state.bluetoothEnabled === true).toString()}</Text>
-                {!this.state.bluetoothEnabled && <Button
-                    onPress={() => this.enableBluetooth()}
-                    title="Enable bluetooth"
-                    color="#841584"/>}
+                <StatusBar
+                    barStyle="light-content"
+                    backgroundColor={colours.darkMain}
+                />
+                <View style={styles.animContainer}>
+                    <LottieView
+                        ref={animation => this.animation = animation}
+                        loop={true}
+                        speed={3.5}
+                        source={require('../anims/bike.json')}
+                    />
+                </View>
+                <View style={styles.infoBox}>
+                    <Text style={styles.infoText}>Welcome</Text>
+                    <Button
+                        onPress={() => this.startButton()}
+                        title={'Get Started'}
+                        color={colours.mainColour}/>
+                </View>
             </View>
         );
     }
@@ -58,18 +72,34 @@ export default class Landing extends Component<Props> {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        backgroundColor: '#F5FCFF',
+        backgroundColor: '#FFF',
+        width: '100%'
     },
     welcome: {
         fontSize: 18,
         textAlign: 'center',
-        margin: 10,
+        paddingVertical: '20%'
     },
     instructions: {
         textAlign: 'center',
         color: '#333333',
         marginBottom: 5,
     },
+    animContainer: {
+        height: 250,
+        width: '100%'
+    },
+    infoBox: {
+        flex: 1,
+        justifyContent: 'space-around',
+        paddingHorizontal: 20,
+        width: '100%'
+    },
+    infoText: {
+        textAlign: 'center',
+        marginBottom: 30,
+        fontSize: 40
+    }
 });

@@ -4,19 +4,17 @@ import {
     Text,
     View,
     Button,
-    FlatList,
-    TouchableNativeFeedback
+    Alert,
+    StatusBar
 } from 'react-native';
 import BTSerial  from 'react-native-android-btserial'
 import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
 
-type Props = {};
-
-export default class Connect extends Component<Props> {
+export default class Bluetooth extends React.Component {
 
     static navigationOptions = {
-        title: 'Find our device',
+        title: 'Enable Bluetooth',
         headerStyle: {
             backgroundColor: colours.mainColour,
         },
@@ -34,57 +32,48 @@ export default class Connect extends Component<Props> {
     }
 
     componentDidMount() {
+        BTSerial.isEnabled((err, enabled) => {
+            console.log(err);
+            if (err)
+                return;
+            console.log(enabled);
+            this.setState({bluetoothEnabled: enabled});
+        });
         this.animation.play();
     }
 
-    findItems() {
-        console.log('Finding items');
-        BTSerial.listDevices((err, devices) => {
-            if (err) {
-                console.log(err);
-                return;
-            }
-
-            BTSerial.connect(address, function (err, status, deviceName) {
-                // callback
-            })
+    enableBluetooth() {
+        BTSerial.enableBT((err, enabled) => {
+            this.setState({bluetoothEnabled: enabled});
+            if (err)
+                Alert.alert('Uh oh!', "We couldn't enable Bluetooth.\nPlease enable this manually and press the button again.");
         })
-    }
-
-    renderItem(item) {
-        return (
-            <TouchableNativeFeedback>
-                <View style={styles.listItem}>
-                    <Text>{item.key}</Text>
-                </View>
-            </TouchableNativeFeedback>
-        )
-    }
+    };
 
     render() {
         return (
             <View style={styles.container}>
+                <StatusBar
+                    barStyle="light-content"
+                    backgroundColor={colours.darkMain}
+                />
                 <View style={styles.animContainer}>
                     <LottieView
                         ref={animation => this.animation = animation}
                         loop={true}
                         speed={1}
-                        source={require('../anims/search.json')}
+                        source={require('../anims/bluetooth.json')}
                     />
                 </View>
                 <View style={styles.infoBox}>
-                    <Button
-                        onPress={() => this.findItems()}
-                        title="Search for new devices"
-                        color={colours.mainColour}/>
-                    <Text style={styles.welcome}>
-                        Select your device from this list
-                    </Text>
+                    <Text style={styles.infoText}>{this.state.bluetoothEnabled ?
+                        'We now need to connect to your device' :
+                        'Please turn on your bluetooth to continue'}</Text>
+                    {!this.state.bluetoothEnabled && <Button
+                        onPress={() => this.enableBluetooth()}
+                        title={this.state.bluetoothEnabled ? 'Connect to device' : 'Enable Bluetooth'}
+                        color={colours.mainColour}/>}
                 </View>
-                <FlatList
-                    data={[{key: 'a'}, {key: 'b'}]}
-                    renderItem={({item}) => this.renderItem(item)}
-                />
             </View>
         );
     }
@@ -96,12 +85,12 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         alignItems: 'stretch',
         backgroundColor: '#FFF',
+        width: '100%'
     },
     welcome: {
         fontSize: 18,
         textAlign: 'center',
-        margin: 10,
-        marginVertical: 30
+        paddingVertical: '20%'
     },
     instructions: {
         textAlign: 'center',
@@ -113,11 +102,13 @@ const styles = StyleSheet.create({
         width: '100%'
     },
     infoBox: {
-        width: '100%',
+        flex: 1,
+        justifyContent: 'center',
         paddingHorizontal: 20
     },
-    listItem: {
-        paddingHorizontal: 20,
-        paddingVertical: 10
+    infoText: {
+        textAlign: 'center',
+        marginBottom: 20,
+        fontSize: 20
     }
 });
