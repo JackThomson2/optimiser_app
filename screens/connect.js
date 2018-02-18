@@ -9,7 +9,7 @@ import BTSerial  from 'react-native-android-btserial'
 
 type Props = {};
 
-export default class Landing extends Component<Props> {
+export default class Connect extends Component<Props> {
 
     constructor(props) {
         super(props);
@@ -18,26 +18,24 @@ export default class Landing extends Component<Props> {
         };
     }
 
-    componentDidMount() {
-        BTSerial.isEnabled((err, enabled) => {
-            console.log(err);
+    findItems() {
+        BTSerial.listDevices((err, devices) => {
             if (err)
                 return;
-            console.log(enabled);
-            this.setState({bluetoothEnabled: enabled});
+
+            console.log(devices);
+
+            let pi = devices.find((device) => {
+                return device.name === "raspberrypi"
+            });
+
+            console.log(pi);
+
+            BTSerial.connect(address, function (err, status, deviceName) {
+                // callback
+            })
         })
     }
-
-    enableBluetooth() {
-        console.log('Enabling bluetooth');
-
-        BTSerial.enableBT((err, enabled) => {
-            this.setState({bluetoothEnabled: enabled});
-            if (err || !enabled) {
-                BTSerial.showBTSettings()
-            }
-        })
-    };
 
     render() {
         return (
@@ -45,11 +43,10 @@ export default class Landing extends Component<Props> {
                 <Text style={styles.welcome}>
                     Suspension Optimiser
                 </Text>
-                <Text>Bluetooth enabled {(this.state.bluetoothEnabled === true).toString()}</Text>
-                {!this.state.bluetoothEnabled && <Button
-                    onPress={() => this.enableBluetooth()}
-                    title="Enable bluetooth"
-                    color="#841584"/>}
+                <Button
+                    onPress={() => this.findItems()}
+                    title="Find our device"
+                />
             </View>
         );
     }
