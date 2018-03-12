@@ -4,6 +4,7 @@ import { StackNavigator } from 'react-navigation';
 import Landing from './screens/landing';
 import BlueTooth from './screens/bluetooth';
 import Connect from './screens/connect';
+import Control from './screens/control';
 
 const RootStack = StackNavigator(
     {
@@ -15,6 +16,9 @@ const RootStack = StackNavigator(
         },
         Connect: {
             screen: Connect
+        },
+        Control: {
+            screen: Control
         }
     },
     {

@@ -3,6 +3,8 @@ package com.suspensionoptimiser;
 import android.app.Application;
 
 import com.facebook.react.ReactApplication;
+import com.horcrux.svg.SvgPackage;
+import com.rusel.RCTBluetoothSerial.RCTBluetoothSerialPackage;
 import com.airbnb.android.react.lottie.LottiePackage;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
@@ -12,7 +14,6 @@ import com.facebook.soloader.SoLoader;
 import java.util.Arrays;
 import java.util.List;
 
-import com.derektu.btserial.BTSerialPackage;
 
 public class MainApplication extends Application implements ReactApplication {
 
@@ -26,8 +27,9 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
-            new LottiePackage(),
-              new BTSerialPackage()
+            new SvgPackage(),
+            new RCTBluetoothSerialPackage(),
+            new LottiePackage()
       );
     }
 

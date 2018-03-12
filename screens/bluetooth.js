@@ -7,7 +7,7 @@ import {
     Alert,
     StatusBar
 } from 'react-native';
-import BTSerial  from 'react-native-android-btserial'
+import BluetoothSerial  from 'react-native-bluetooth-serial'
 import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
 
@@ -32,22 +32,36 @@ export default class Bluetooth extends React.Component {
     }
 
     componentDidMount() {
-        BTSerial.isEnabled((err, enabled) => {
-            console.log(err);
-            if (err)
-                return;
-            console.log(enabled);
-            this.setState({bluetoothEnabled: enabled});
-        });
+        setTimeout(async () => {
+            try {
+                let bluetoothEnabled = await BluetoothSerial.isEnabled();
+                this.setState({bluetoothEnabled});
+            } catch (err) {
+                this.setState({bluetoothEnabled : false})
+            }
+        },1);
         this.animation.play();
+        BluetoothSerial.on('bluetoothEnabled', () => this.toConnect());
+    }
+
+    componentWillUnmount() {
+        BluetoothSerial.removeListener('bluetoothEnabled', () => this.toConnect());
+    }
+
+    toConnect() {
+        this.props.navigation.replace('Connect');
     }
 
     enableBluetooth() {
-        BTSerial.enableBT((err, enabled) => {
-            this.setState({bluetoothEnabled: enabled});
-            if (err)
-                Alert.alert('Uh oh!', "We couldn't enable Bluetooth.\nPlease enable this manually and press the button again.");
-        })
+        setTimeout(async () => {
+            try {
+                await BluetoothSerial.enable();
+            } catch (err) {
+                console.log(err);
+                this.setState({bluetoothEnabled : false});
+                Alert.alert('Uh oh!', "We couldn't enable Bluetooth.\nPlease enable this manually .");
+            }
+        },1);
     };
 
     render() {

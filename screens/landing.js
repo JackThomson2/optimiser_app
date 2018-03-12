@@ -7,14 +7,14 @@ import {
     Alert,
     StatusBar
 } from 'react-native';
-import BTSerial  from 'react-native-android-btserial'
+import BluetoothSerial  from 'react-native-bluetooth-serial'
 import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
 
 export default class Landing extends React.Component {
 
     static navigationOptions = {
-        title: 'Welcome',
+        title: 'Optimiser',
         headerStyle: {
             backgroundColor: colours.mainColour,
         },
@@ -33,13 +33,16 @@ export default class Landing extends React.Component {
     }
 
     startButton() {
-        BTSerial.isEnabled((err, enabled) => {
-            let resultScreen = 'BlueTooth';
-            if (!err && !enabled || true)
-                resultScreen = 'Connect';
+        setTimeout(async () => {
+            try {
+                let enabled = await BluetoothSerial.isEnabled();
+                let resultScreen = enabled ? 'Connect' : 'BlueTooth';
 
-            this.props.navigation.navigate(resultScreen);
-        });
+                this.props.navigation.navigate(resultScreen);
+            } catch (err) {
+                this.props.navigation.navigate('BlueTooth');
+            }
+        },1);
     }
 
     render() {

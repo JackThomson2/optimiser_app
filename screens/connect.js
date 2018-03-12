@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import {
+    Alert,
     StyleSheet,
     Text,
     View,
@@ -7,9 +8,11 @@ import {
     FlatList,
     TouchableNativeFeedback
 } from 'react-native';
-import BTSerial  from 'react-native-android-btserial'
+import BluetoothSerial  from 'react-native-bluetooth-serial'
 import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
+import BusyIndicator from 'react-native-busy-indicator';
+import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
 
 type Props = {};
 
@@ -29,33 +32,74 @@ export default class Connect extends Component<Props> {
     constructor(props) {
         super(props);
         this.state = {
-            bluetoothEnabled: false
+            bluetoothEnabled: false,
+            devices: []
         };
     }
 
     componentDidMount() {
         this.animation.play();
+        setTimeout(() => this.findItems(),50);
     }
 
     findItems() {
         console.log('Finding items');
-        BTSerial.listDevices((err, devices) => {
-            if (err) {
-                console.log(err);
-                return;
-            }
+        setTimeout(async () => {
+            try {
+                let devices = await BluetoothSerial.list();
 
-            BTSerial.connect(address, function (err, status, deviceName) {
-                // callback
-            })
-        })
+                let cntr = 0;
+                let list = [];
+
+                devices.forEach(device => {
+                    device.key = cntr.toString();
+                    cntr++;
+                    list.push(device)
+                });
+
+                this.setState({devices: list})
+            } catch(err) {
+                console.log(err);
+            }
+        });
+    }
+
+    discoverDevices() {
+        loaderHandler.showLoader('Searching for items...');
+        setTimeout(async () => {
+            try {
+                let res = await BluetoothSerial.setDiscoverable();
+                console.log(res);
+                loaderHandler.hideLoader();
+            } catch(err) {
+                console.log(err);
+                loaderHandler.hideLoader();
+            }
+        },1);
+    }
+
+    itemPressed(item) {
+        loaderHandler.showLoader('Connecting to item...');
+        setTimeout(async () => {
+            try {
+                let res = await BluetoothSerial.connect(item.id);
+                loaderHandler.hideLoader();
+
+                this.props.navigation.navigate('Control');
+            } catch (err) {
+                console.log(err);
+                loaderHandler.hideLoader();
+                Alert.alert('Uh oh', 'Could not connect to your device');
+            }
+        },1);
     }
 
     renderItem(item) {
         return (
-            <TouchableNativeFeedback>
+            <TouchableNativeFeedback onPress={() => this.itemPressed(item)}>
                 <View style={styles.listItem}>
-                    <Text>{item.key}</Text>
+                    <Text>{item.name}</Text>
+                    <Text>{item.address}</Text>
                 </View>
             </TouchableNativeFeedback>
         )
@@ -74,7 +118,7 @@ export default class Connect extends Component<Props> {
                 </View>
                 <View style={styles.infoBox}>
                     <Button
-                        onPress={() => this.findItems()}
+                        onPress={() => this.discoverDevices()}
                         title="Search for new devices"
                         color={colours.mainColour}/>
                     <Text style={styles.welcome}>
@@ -82,9 +126,10 @@ export default class Connect extends Component<Props> {
                     </Text>
                 </View>
                 <FlatList
-                    data={[{key: 'a'}, {key: 'b'}]}
+                    data={this.state.devices}
                     renderItem={({item}) => this.renderItem(item)}
                 />
+                <BusyIndicator size={'large'} overlayHeight={150} color={colours.mainColour} overlayWidth={'auto'}/>
             </View>
         );
     }
@@ -109,7 +154,7 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     animContainer: {
-        height: 250,
+        height: 150,
         width: '100%'
     },
     infoBox: {
