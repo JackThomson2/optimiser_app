@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     StyleSheet,
     Text,
@@ -14,10 +15,14 @@ import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
 import BusyIndicator from 'react-native-busy-indicator';
 import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
+import {observer} from 'mobx-react/native';
 import { VictoryLine, VictoryChart, VictoryTheme, VictoryLegend, VictoryAxis } from "victory-native";
+import Records from '../store/records';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type Props = {};
 
+@observer
 export default class Connect extends Component<Props> {
 
     static navigationOptions = {
@@ -39,10 +44,36 @@ export default class Connect extends Component<Props> {
             zData: [[], [], [], [], []],
             recording: false
         };
+        setTimeout(async () => this.getAllData(), 500);
+        BluetoothSerial.on('read', (data) => console.log(`Data ${data}`));
     }
 
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async getAllData() {
+        let res = await BluetoothSerial.write("transaction:list");
+        if (res == true) {
+            try {
+                let response = await BluetoothSerial.readFromDevice();
+                let names = JSON.parse(response);
+                let fileNames = [];
+
+                names.forEach(name => {
+                    let dateStr = name.substring(0, name.length - 5);
+                    let date = new Date(parseInt(dateStr));
+                    let record = {
+                        title: name,
+                        date
+                    };
+                    fileNames.push(record)
+                });
+                Records.addItems(fileNames);
+            } catch(err) {
+                setTimeout(async () => await this.getAllData(),300);
+            }
+        }
     }
 
     async sendLoop() {
@@ -56,7 +87,8 @@ export default class Connect extends Component<Props> {
     }
 
     startRecording = async () => {
-        let res = await BluetoothSerial.write("start");
+        return;
+        let res = await BluetoothSerial.write("transaction:start");
         if (res == true) {
             await this.waitTillRead();
             console.log('Recording started');
@@ -65,7 +97,7 @@ export default class Connect extends Component<Props> {
     };
 
     stopRecording = async () => {
-        let res = await BluetoothSerial.write("stop");
+        let res = await BluetoothSerial.write("transaction:stop");
         if (res == true) {
             await this.waitTillRead();
             console.log('Recording stopped');
@@ -106,6 +138,61 @@ export default class Connect extends Component<Props> {
             return await this.waitTillRead();
         }
     };
+
+    async initWithFile(file) {
+        let size = null;
+        while(!Number.isInteger(size)) {
+            await this.sleep(500);
+            let request = 'transaction:init:filename:' + file.title + ',';
+            let res = await BluetoothSerial.write(request);
+            if (res == true) {
+                size = parseInt(await this.waitTillRead());
+            }
+        }
+        console.log(size);
+        return size;
+    }
+
+    async getFilesData(file, range) {
+        let data = {xData: [[], [], [], [], []], yData: [[], [], [], [], []], zData: [[], [], [], [], []]};
+
+        return await this.dataRecursion(file, data, 0, range);
+    }
+
+    async dataRecursion(file, data, curr, range) {
+        if (curr > range)
+            return data;
+
+        await this.sleep(50);
+
+        let request = 'transaction:request:filename:' + file.title + ',chunk:' + curr + ',';
+        let res = await BluetoothSerial.write(request);
+        if (!res)
+            return await this.dataRecursion(file,data,curr,range);
+
+        let req = await this.waitTillRead();
+        let dataJSON = [];
+        try {
+            dataJSON = JSON.parse(req);
+            if (!Array.isArray(dataJSON)) {
+                await this.sleep(300);
+                return await this.dataRecursion(file, data, curr, range);
+            }
+        } catch(err) {
+            console.log("Error retrying");
+            await this.sleep(300);
+            return await this.dataRecursion(file,data,curr,range);
+        }
+        dataJSON.forEach(item => {
+            for (let i = 0; i < 5; i++) {
+                data.xData[i].push(item[i].x);
+                data.yData[i].push(item[i].y);
+                data.zData[i].push(item[i].z);
+            }
+        });
+
+        return await this.dataRecursion(file, data, curr + 1, range);
+    }
 
     getData = async () => {
         this.setState({xData: [[], [], [], [], []], yData: [[], [], [], [], []], zData: [[], [], [], [], []]});
@@ -171,31 +258,55 @@ export default class Connect extends Component<Props> {
         );
     };
 
+    renderItem(item) {
+        return (
+            <TouchableNativeFeedback onPress={() => this.itemPressed(item)}>
+                <View style={styles.listItem}>
+                    <Text>Recording from</Text>
+                    <Text>{item.date.toString()}</Text>
+                    <View style={styles.notifier}>
+                        {item.loading === true ? <ActivityIndicator
+                                animating={true} size="small" color={colours.mainColour} /> :
+                            <Icon name={item.data === null ? "file-download" : "check"} size={25} color={colours.mainColour}/>}
+                    </View>
+                </View>
+            </TouchableNativeFeedback>
+        )
+    }
+
+    async itemPressed(name) {
+        if (!name.data) {
+            Records.setLoading(name, true);
+
+            let size = await this.initWithFile(name);
+            let data = await this.getFilesData(name, size);
+
+            Records.setData(name, data);
+        } else {
+            console.log(name.data);
+        }
+    }
+
     render() {
         return (
-            <ScrollView style={styles.container} removeClippedSubviews={true}>
-                <View style={styles.infoBox}>
+            <View style={styles.container}>
+                    <Text style={styles.welcome}>Past Recordings</Text>
+                    <FlatList
+                        data={Records.store}
+                        renderItem={({item}) => this.renderItem(item)}
+                    />
+                    <Button
+                        onPress={this.startRecording}
+                        title="Start recording"
+                        color={colours.mainColour}/>
+                    {/*
                     {this.getInfoText()}
                     {this.drawData(this.state.xData, 'X Data')}
                     {this.drawData(this.state.yData, 'Y Data')}
                     {this.drawData(this.state.zData, 'Z Data')}
-                    <View style={styles.buttonContainer}>
-                        <Button
-                            onPress={this.startRecording}
-                            title="Start recording"
-                            color={colours.mainColour}/>
-                        <Button
-                            onPress={this.stopRecording}
-                            title="Stop recording"
-                            color={colours.mainColour}/>
-                        <Button
-                            onPress={this.getData}
-                            title="Read from device"
-                            color={colours.mainColour}/>
-                    </View>
-                </View>
+                    */}
                 <BusyIndicator size={'large'} overlayHeight={150} color={colours.mainColour} overlayWidth={'auto'}/>
-            </ScrollView>
+            </View>
         );
     }
 }
@@ -222,11 +333,12 @@ const styles = StyleSheet.create({
     },
     infoBox: {
         width: '100%',
-        paddingHorizontal: 20
     },
     listItem: {
         paddingHorizontal: 20,
-        paddingVertical: 10
+        paddingVertical: 10,
+        backgroundColor: '#FAFAFA',
+        marginTop: 1,
     },
     row: {
         height: 200,
@@ -240,5 +352,10 @@ const styles = StyleSheet.create({
     buttonContainer: {
         height: 160,
         justifyContent: 'space-around'
+    },
+    notifier: {
+        position: 'absolute',
+        top: 20,
+        right: 10,
     }
 });

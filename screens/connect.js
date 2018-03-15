@@ -6,7 +6,8 @@ import {
     View,
     Button,
     FlatList,
-    TouchableNativeFeedback
+    TouchableNativeFeedback,
+    ActivityIndicator
 } from 'react-native';
 import BluetoothSerial  from 'react-native-bluetooth-serial'
 import * as colours from '../colours'
@@ -57,6 +58,9 @@ export default class Connect extends Component<Props> {
                     list.push(device)
                 });
 
+
+                console.log(list);
+
                 this.setState({devices: list})
             } catch(err) {
                 console.log(err);
@@ -68,8 +72,21 @@ export default class Connect extends Component<Props> {
         loaderHandler.showLoader('Searching for items...');
         setTimeout(async () => {
             try {
-                let res = await BluetoothSerial.setDiscoverable();
-                console.log(res);
+                let devices = await BluetoothSerial.discoverUnpairedDevices();
+
+                console.log(devices);
+
+                let list = this.state.devices;
+                let cntr = list.length;
+
+                devices.forEach(device => {
+                    device.key = cntr.toString();
+                    cntr++;
+                    list.push(device)
+                });
+
+                this.setState({devices: list});
+
                 loaderHandler.hideLoader();
             } catch(err) {
                 console.log(err);
