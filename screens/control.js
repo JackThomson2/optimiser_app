@@ -16,7 +16,6 @@ import LottieView from 'lottie-react-native';
 import BusyIndicator from 'react-native-busy-indicator';
 import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
 import {observer} from 'mobx-react/native';
-import { VictoryLine, VictoryChart, VictoryTheme, VictoryLegend, VictoryAxis } from "victory-native";
 import Records from '../store/records';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -62,10 +61,12 @@ export default class Connect extends Component<Props> {
 
                 names.forEach(name => {
                     let dateStr = name.substring(0, name.length - 5);
-                    let date = new Date(parseInt(dateStr));
+                    let rawDate = parseInt(dateStr);
+                    let date = new Date(rawDate);
                     let record = {
                         title: name,
-                        date
+                        date,
+                        rawDate
                     };
                     fileNames.push(record)
                 });
@@ -149,7 +150,6 @@ export default class Connect extends Component<Props> {
                 size = parseInt(await this.waitTillRead());
             }
         }
-        console.log(size);
         return size;
     }
 
@@ -215,43 +215,6 @@ export default class Connect extends Component<Props> {
         }
     };
 
-    drawData = (data, title = "") => {
-        if (!data || data[0].length <= 0)
-            return null;
-        else {
-            return (
-                <View>
-                    <Text style={styles.infoText}>{title}</Text>
-                    <VictoryChart theme={VictoryTheme.material} domainPadding={{ x: 20, y: [20, 100] }}>
-                        <VictoryAxis offsetY={50}/>
-                        <VictoryAxis dependentAxis offsetX={50} crossAxis={false}/>
-                        <VictoryLegend
-                                       x={90}
-                                       y={50}
-                                       title="Accelerometers"
-                                       centerTitle
-                                       orientation="horizontal"
-                                       gutter={20}
-                                       itemsPerRow={3}
-                                       style={{ border: { stroke: "black" }, title: {fontSize: 10 } }}
-                                       data={[
-                                           { name: "1", symbol: { fill: "#c43a31" } },
-                                           { name: "2", symbol: { fill: "#37c469" } },
-                                           { name: "3", symbol: { fill: "#4879c4" } },
-                                           { name: "4", symbol: { fill: "#ffce5a" } },
-                                           { name: "5", symbol: { fill: "#cf3aff" } },
-                                       ]}
-                        />
-                        <VictoryLine data={data[0]} style={{ data: { stroke: "#c43a31"}}}/>
-                        <VictoryLine data={data[1]} style={{ data: { stroke: "#37c469"}}}/>
-                        <VictoryLine data={data[2]} style={{ data: { stroke: "#4879c4"}}}/>
-                        <VictoryLine data={data[3]} style={{ data: { stroke: "#ffce5a"}}}/>
-                        <VictoryLine data={data[4]} style={{ data: { stroke: "#cf3aff"}}}/>
-                    </VictoryChart>
-                </View>)
-        }
-    };
-
     getInfoText = () => {
         return (
             <Text style={styles.infoText}>{this.state.recording ? 'Recording now' : 'Not recording'}</Text>
@@ -274,17 +237,20 @@ export default class Connect extends Component<Props> {
         )
     }
 
-    async itemPressed(name) {
-        if (!name.data) {
-            Records.setLoading(name, true);
+    async itemPressed(record) {
+        if (!record.data) {
+            Records.setLoading(record, true);
 
-            let size = await this.initWithFile(name);
-            let data = await this.getFilesData(name, size);
+            let size = await this.initWithFile(record);
+            let data = await this.getFilesData(record, size);
 
-            Records.setData(name, data);
+            Records.setData(record, data);
         } else {
-            console.log(name.data);
+            console.log(record.data);
         }
+
+        Records.setItem(record.title);
+        this.props.navigation.navigate('Viewer');
     }
 
     render() {
@@ -299,12 +265,6 @@ export default class Connect extends Component<Props> {
                         onPress={this.startRecording}
                         title="Start recording"
                         color={colours.mainColour}/>
-                    {/*
-                    {this.getInfoText()}
-                    {this.drawData(this.state.xData, 'X Data')}
-                    {this.drawData(this.state.yData, 'Y Data')}
-                    {this.drawData(this.state.zData, 'Z Data')}
-                    */}
                 <BusyIndicator size={'large'} overlayHeight={150} color={colours.mainColour} overlayWidth={'auto'}/>
             </View>
         );

@@ -5,6 +5,7 @@ import Landing from './screens/landing';
 import BlueTooth from './screens/bluetooth';
 import Connect from './screens/connect';
 import Control from './screens/control';
+import DataViewer from './screens/dataViewer';
 
 const RootStack = StackNavigator(
     {
@@ -19,6 +20,9 @@ const RootStack = StackNavigator(
         },
         Control: {
             screen: Control
+        },
+        Viewer: {
+            screen: DataViewer
         }
     },
     {

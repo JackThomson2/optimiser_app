@@ -7,19 +7,24 @@ class RecordStore {
     @observable
     store = [];
 
+    currItem = {};
+
     @action
     addItems(items) {
         let counter = this.store.length;
+        let newStore = this.store.slice(0);
         items.forEach(item => {
-            let matches = this.store.filter(record => record.title === item.title);
+            let matches = newStore.filter(record => record.title === item.title);
             if (matches.length === 0) {
                 item.key = counter.toString();
                 item.data = null;
                 item.loading = false;
                 counter++;
-                this.store.push(item);
+                newStore.push(item);
             }
         });
+        newStore.sort((a,b) => b.rawDate - a.rawDate);
+        this.store = newStore;
     }
 
     @action
@@ -42,8 +47,17 @@ class RecordStore {
         let newList = this.store.slice(0);
         newList[index].loading = false;
         newList[index].data = data;
-        console.log(data);
         this.store = newList;
+    }
+
+    @action
+    setItem(title) {
+        let index = this.store.findIndex(record => record.title === title);
+        if (index < 0)
+            return;
+
+        //Clears the issues with observable arrays
+        this.currItem = JSON.parse(JSON.stringify(this.store[index]));
     }
 }
 
