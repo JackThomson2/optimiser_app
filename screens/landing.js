@@ -10,7 +10,10 @@ import {
 import BluetoothSerial  from 'react-native-bluetooth-serial'
 import * as colours from '../colours'
 import LottieView from 'lottie-react-native';
+import * as records from '../store/records';
+import {observer} from 'mobx-react/native';
 
+@observer
 export default class Landing extends React.Component {
 
     static navigationOptions = {
@@ -26,6 +29,13 @@ export default class Landing extends React.Component {
 
     constructor(props) {
         super(props);
+       /* setTimeout(() => {
+            records.appStartup().then(() => {
+                console.log('Rehydrated data');
+            }).catch((err) => {
+                console.log(`Error ${err}`);
+            });
+        }, 300);*/
     }
 
     componentDidMount() {

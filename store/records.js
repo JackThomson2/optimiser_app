@@ -3,7 +3,7 @@ import { create, persist } from 'mobx-persist';
 import { AsyncStorage } from 'react-native';
 
 class RecordStore {
-    @persist
+    @persist('object')
     @observable
     store = [];
 
@@ -71,6 +71,6 @@ const Records = new RecordStore();
 export default Records;
 
 export async function appStartup() {
-    await hydrate('User', General);
+    await hydrate('Record', Records);
     console.log('Rehydrated Records');
 }

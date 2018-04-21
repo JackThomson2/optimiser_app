@@ -7,6 +7,7 @@ import Connect from './screens/connect';
 import Control from './screens/control';
 import DataViewer from './screens/dataViewer';
 
+
 const RootStack = StackNavigator(
     {
         Landing: {
@@ -31,7 +32,8 @@ const RootStack = StackNavigator(
 );
 
 export default class App extends Component<Props> {
-  render() {
-      return <RootStack />;
-  }
+
+    render() {
+        return <RootStack />;
+    }
 }

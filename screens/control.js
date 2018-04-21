@@ -18,6 +18,7 @@ import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
 import {observer} from 'mobx-react/native';
 import Records from '../store/records';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Modal from "react-native-modal";
 
 type Props = {};
 
@@ -33,6 +34,11 @@ export default class Connect extends Component<Props> {
         headerTitleStyle: {
             fontWeight: '100',
         },
+        isVisible: false,
+        recording: false,
+        record: true,
+        size: 0,
+        count: 0
     };
 
     constructor(props) {
@@ -45,6 +51,7 @@ export default class Connect extends Component<Props> {
         };
         setTimeout(async () => this.getAllData(), 500);
         BluetoothSerial.on('read', (data) => console.log(`Data ${data}`));
+        this.modalContent = this.modalContent.bind(this);
     }
 
     sleep(ms) {
@@ -55,13 +62,15 @@ export default class Connect extends Component<Props> {
         let res = await BluetoothSerial.write("transaction:list");
         if (res == true) {
             try {
+                await this.sleep(300);
                 let response = await BluetoothSerial.readFromDevice();
+                console.log(response);
                 let names = JSON.parse(response);
+                console.log(names);
                 let fileNames = [];
 
                 names.forEach(name => {
-                    let dateStr = name.substring(0, name.length - 5);
-                    let rawDate = parseInt(dateStr);
+                    let rawDate = parseInt(name);
                     let date = new Date(rawDate);
                     let record = {
                         title: name,
@@ -72,153 +81,76 @@ export default class Connect extends Component<Props> {
                 });
                 Records.addItems(fileNames);
             } catch(err) {
+                console.log(err);
                 setTimeout(async () => await this.getAllData(),300);
             }
         }
     }
 
-    async sendLoop() {
-        let response = await BluetoothSerial.readFromDevice();
-        console.log(`We got ${response}`);
-        setTimeout(async() => {
-            let res = await BluetoothSerial.write("ping");
-
-            await this.sendLoop();
-        },5000);
-    }
-
-    startRecording = async () => {
-        return;
-        let res = await BluetoothSerial.write("transaction:start");
+    async toggleRecording() {
+        let message = "transaction:";
+        message += this.state.recording === true ? 'stop' : 'start';
+        let res = await BluetoothSerial.write(message);
         if (res == true) {
-            await this.waitTillRead();
-            console.log('Recording started');
-            this.setState({recording : true});
-        }
-    };
-
-    stopRecording = async () => {
-        let res = await BluetoothSerial.write("transaction:stop");
-        if (res == true) {
-            await this.waitTillRead();
-            console.log('Recording stopped');
-            this.setState({recording : false});
-        }
-    };
-
-    getChunks = async () => {
-        let res = await BluetoothSerial.write("transaction:continue");
-        if (res == true) {
-            let data = await this.waitTillRead();
-            let dataJSON = [];
-            try {
-                dataJSON = JSON.parse(data);
-                console.log(dataJSON);
-            } catch(err) {
-                return;
-            }
-
-            let xData = this.state.xData;
-            let yData = this.state.yData;
-            let zData = this.state.zData;
-
-            dataJSON.forEach(item => {
-                for (let i = 0; i < 5; i++) {
-                    xData[i].push(item[i].x);
-                    yData[i].push(item[i].y);
-                    zData[i].push(item[i].z);
-                }
-            });
-            this.setState({xData, yData, zData});
-        }
-    };
-
-    getChunkNum = async () => {
-        let res = await BluetoothSerial.write("transaction:init");
-        if (res == true) {
-            return await this.waitTillRead();
+            let res = await this.waitTillRead();
+            console.log(`Recording started, result ${res}`);
+            if (this.state.recording === true)
+                setTimeout(async () => this.getAllData(), 300);
+            this.setState({recording : !this.state.recording, isVisible: !this.state.recording});
         }
     };
 
     async initWithFile(file) {
         let size = null;
-        while(!Number.isInteger(size)) {
-            await this.sleep(500);
+        try {
             let request = 'transaction:init:filename:' + file.title + ',';
             let res = await BluetoothSerial.write(request);
             if (res == true) {
-                size = parseInt(await this.waitTillRead());
+                let res = JSON.parse(await this.waitTillRead());
+                console.log(res);
+                return this.dataProcess(res);
             }
+        } catch (err) {
+            console.log(`Error ${err} retrying`);
+            return await this.initWithFile(file);
         }
         return size;
     }
 
-    async getFilesData(file, range) {
+    dataProcess(dataJSON) {
         let data = {xData: [[], [], [], [], []], yData: [[], [], [], [], []], zData: [[], [], [], [], []]};
 
-        return await this.dataRecursion(file, data, 0, range);
-    }
+        for (let i = 0; i < 5; i++) {
+            let toRead = dataJSON[i.toString()][1];
+            let size = toRead.x.length;
 
-    async dataRecursion(file, data, curr, range) {
-        if (curr > range)
-            return data;
+            for (let x = 0; x < size; x++) {
+                let xData = {y : toRead.x[x], x : x};
+                let yData = {y : toRead.y[x], x : x};
+                let zData = {y : toRead.z[x], x : x};
 
-        await this.sleep(50);
-
-        let request = 'transaction:request:filename:' + file.title + ',chunk:' + curr + ',';
-        let res = await BluetoothSerial.write(request);
-        if (!res)
-            return await this.dataRecursion(file,data,curr,range);
-
-        let req = await this.waitTillRead();
-        let dataJSON = [];
-        try {
-            dataJSON = JSON.parse(req);
-            if (!Array.isArray(dataJSON)) {
-                await this.sleep(300);
-                return await this.dataRecursion(file, data, curr, range);
+                data.xData[i].push(xData);
+                data.yData[i].push(yData);
+                data.zData[i].push(zData);
             }
-        } catch(err) {
-            console.log("Error retrying");
-            await this.sleep(300);
-            return await this.dataRecursion(file,data,curr,range);
         }
-        dataJSON.forEach(item => {
-            for (let i = 0; i < 5; i++) {
-                data.xData[i].push(item[i].x);
-                data.yData[i].push(item[i].y);
-                data.zData[i].push(item[i].z);
-            }
-        });
 
-        return await this.dataRecursion(file, data, curr + 1, range);
+        return data;
     }
-
-    getData = async () => {
-        this.setState({xData: [[], [], [], [], []], yData: [[], [], [], [], []], zData: [[], [], [], [], []]});
-        let chunks = await this.getChunkNum();
-        console.log(chunks);
-        for (let i = 0; i < chunks; i++) {
-            await this.getChunks();
-        }
-        console.log(this.state);
-    };
 
     waitTillRead = async () => {
+        await BluetoothSerial.clear();
+        let available = 0;
         while (true) {
-            await this.sleep(1000);
-            let response = await BluetoothSerial.readFromDevice();
+            await this.sleep(100);
+            let nowAvailable = await BluetoothSerial.available();
 
-            if (response) {
+            if (available === nowAvailable && nowAvailable > 0) {
+                let response = await BluetoothSerial.readFromDevice();q
                 return response;
             }
+            available = nowAvailable;
         }
-    };
-
-    getInfoText = () => {
-        return (
-            <Text style={styles.infoText}>{this.state.recording ? 'Recording now' : 'Not recording'}</Text>
-        );
     };
 
     renderItem(item) {
@@ -237,20 +169,61 @@ export default class Connect extends Component<Props> {
         )
     }
 
+    modalContent() {
+        if (this.state.record === false) {
+            return (
+              <View style={styles.modalContainer}>
+                  <ActivityIndicator
+                      animating={true} size="large" color={colours.mainColour} />
+                  {(this.state.size > 0) && <Text>{this.state.count}/{this.state.size + 1}</Text>}
+                  <Text>Loading data</Text>
+                  <Button
+                      onPress={() => this.toggleVisible()}
+                      title={'Close'}
+                      color={colours.mainColour}/>
+              </View>
+            );
+        } else {
+            return (
+              <View style={styles.modalContainer}>
+                  <Text style={styles.controlText}>Control Device</Text>
+                  <Button
+                      onPress={() => this.toggleRecording()}
+                      title={this.state.recording ? 'Stop Recording' : 'Start recording'}
+                      color={colours.mainColour}/>
+                  <View style={styles.spacer}/>
+                  <Button
+                      onPress={() => this.toggleVisible()}
+                      title={'Close'}
+                      color={colours.mainColour}/>
+              </View>
+            );
+        }
+    };
+
+    toggleVisible()  {
+        this.setState({isVisible : !this.state.isVisible});
+    };
+
     async itemPressed(record) {
         if (!record.data) {
+            this.setState({record : false, isVisible: true, size: 0, count: 0});
             Records.setLoading(record, true);
 
-            let size = await this.initWithFile(record);
-            let data = await this.getFilesData(record, size);
+            let data = await this.initWithFile(record);
 
             Records.setData(record, data);
         } else {
             console.log(record.data);
         }
 
+        this.setState({record : false, isVisible: false, size: 0, count: 0});
         Records.setItem(record.title);
         this.props.navigation.navigate('Viewer');
+    }
+
+    openRecord() {
+        this.setState({record : true, isVisible: true});
     }
 
     render() {
@@ -262,9 +235,12 @@ export default class Connect extends Component<Props> {
                         renderItem={({item}) => this.renderItem(item)}
                     />
                     <Button
-                        onPress={this.startRecording}
+                        onPress={() => this.openRecord()}
                         title="Start recording"
                         color={colours.mainColour}/>
+                    <Modal isVisible={this.state.isVisible} useNativeDriver={true}>
+                        {this.modalContent()}
+                    </Modal>
                 <BusyIndicator size={'large'} overlayHeight={150} color={colours.mainColour} overlayWidth={'auto'}/>
             </View>
         );
@@ -317,5 +293,20 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 20,
         right: 10,
+    },
+    modalContainer: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        width: '100%',
+        paddingVertical: 40,
+        alignItems: 'center',
+        justifyContent: 'space-around'
+    },
+    controlText: {
+        fontSize: 25,
+        marginBottom: 30
+    },
+    spacer: {
+        height: 20,
     }
 });
