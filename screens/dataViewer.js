@@ -49,14 +49,12 @@ export default class DataView extends React.Component {
                                 { name: "2", symbol: { fill: "#37c469" } },
                                 { name: "3", symbol: { fill: "#4879c4" } },
                                 { name: "4", symbol: { fill: "#ffce5a" } },
-                                { name: "5", symbol: { fill: "#cf3aff" } },
                             ]}
                         />
                         <VictoryLine data={data[0]} style={{ data: { stroke: "#c43a31" } }}/>
                         <VictoryLine data={data[1]} style={{ data: { stroke: "#37c469" } }}/>
                         <VictoryLine data={data[2]} style={{ data: { stroke: "#4879c4" } }}/>
                         <VictoryLine data={data[3]} style={{ data: { stroke: "#ffce5a" } }}/>
-                        <VictoryLine data={data[4]} style={{ data: { stroke: "#cf3aff" } }}/>
                     </VictoryChart>
                 </View>)
         }

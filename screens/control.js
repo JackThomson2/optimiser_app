@@ -102,16 +102,18 @@ export default class Connect extends Component<Props> {
 
     async initWithFile(file) {
         let size = null;
+        let data = null;
         try {
             let request = 'transaction:init:filename:' + file.title + ',';
             let res = await BluetoothSerial.write(request);
             if (res == true) {
-                let res = JSON.parse(await this.waitTillRead());
+                data = await this.waitTillRead();
+                let res = JSON.parse(data);
                 console.log(res);
                 return this.dataProcess(res);
             }
         } catch (err) {
-            console.log(`Error ${err} retrying`);
+            console.log(`Error ${err} retrying data is ${data}`);
             return await this.initWithFile(file);
         }
         return size;
@@ -120,7 +122,7 @@ export default class Connect extends Component<Props> {
     dataProcess(dataJSON) {
         let data = {xData: [[], [], [], [], []], yData: [[], [], [], [], []], zData: [[], [], [], [], []]};
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 4; i++) {
             let toRead = dataJSON[i.toString()][1];
             let size = toRead.x.length;
 
@@ -146,7 +148,7 @@ export default class Connect extends Component<Props> {
             let nowAvailable = await BluetoothSerial.available();
 
             if (available === nowAvailable && nowAvailable > 0) {
-                let response = await BluetoothSerial.readFromDevice();q
+                let response = await BluetoothSerial.readFromDevice();
                 return response;
             }
             available = nowAvailable;
