@@ -153,8 +153,7 @@ export default class Connect extends Component<Props> {
             let nowAvailable = await BluetoothSerial.available();
 
             if (available === nowAvailable && nowAvailable > 0) {
-                let response = await BluetoothSerial.readFromDevice();
-                return response;
+                return await BluetoothSerial.readFromDevice();
             }
             available = nowAvailable;
         }

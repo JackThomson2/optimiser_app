@@ -9,7 +9,7 @@ class RecordStore {
 
     currItem = {};
 
-    TEST = true;
+    TEST = false;
 
     @action
     addItems(items) {
