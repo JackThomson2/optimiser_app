@@ -15,6 +15,7 @@
     "react": "16.2.0",
     "react-native": "0.53.0",
     "react-native-bluetooth-serial": "rusel1989/react-native-bluetooth-serial#56/head",
+    "react-native-countdown-circle": "^3.0.0",
     "react-native-modal": "^5.3.0",
     "react-native-svg": "^6.2.2",
     "react-native-svg-charts": "^3.0.2",

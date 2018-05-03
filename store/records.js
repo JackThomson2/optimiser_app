@@ -9,6 +9,8 @@ class RecordStore {
 
     currItem = {};
 
+    TEST = true;
+
     @action
     addItems(items) {
         let counter = this.store.length;

@@ -18,6 +18,7 @@ import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
 import {observer} from 'mobx-react/native';
 import Records from '../store/records';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CountdownCircle from 'react-native-countdown-circle';
 import Modal from "react-native-modal";
 
 type Props = {};
@@ -34,11 +35,6 @@ export default class Connect extends Component<Props> {
         headerTitleStyle: {
             fontWeight: '100',
         },
-        isVisible: false,
-        recording: false,
-        record: true,
-        size: 0,
-        count: 0
     };
 
     constructor(props) {
@@ -47,9 +43,15 @@ export default class Connect extends Component<Props> {
             xData: [[], [], [], [], []],
             yData: [[], [], [], [], []],
             zData: [[], [], [], [], []],
-            recording: false
+            recording: false,
+            isVisible: false,
+            calibration: false,
+            record: true,
+            size: 0,
+            count: 0
         };
-        setTimeout(async () => this.getAllData(), 500);
+        if(!Records.TEST)
+            setTimeout(async () => this.getAllData(), 500);
         BluetoothSerial.on('read', (data) => console.log(`Data ${data}`));
         this.modalContent = this.modalContent.bind(this);
     }
@@ -89,15 +91,18 @@ export default class Connect extends Component<Props> {
 
     async toggleRecording() {
         let message = "transaction:";
+        let res = false;
         message += this.state.recording === true ? 'stop' : 'start';
-        let res = await BluetoothSerial.write(message);
+        if (!Records.TEST)
+            res = await BluetoothSerial.write(message);
         if (res == true) {
             let res = await this.waitTillRead();
             console.log(`Recording started, result ${res}`);
             if (this.state.recording === true)
                 setTimeout(async () => this.getAllData(), 300);
-            this.setState({recording : !this.state.recording, isVisible: !this.state.recording});
-        }
+            this.setState({recording : !this.state.recording, isVisible: !this.state.recording, calibration: !this.state.recording});
+        } else if (Records.TEST)
+            this.setState({recording: !this.state.recording, isVisible: !this.state.recording, calibration: !this.state.recording});
     };
 
     async initWithFile(file) {
@@ -189,13 +194,24 @@ export default class Connect extends Component<Props> {
             return (
               <View style={styles.modalContainer}>
                   <Text style={styles.controlText}>Control Device</Text>
+                  {this.state.calibration && <View style={styles.caliContainer}>
+                          <CountdownCircle
+                              seconds={20}
+                              radius={40}
+                              borderWidth={10}
+                              color={colours.mainColour}
+                              bgColor="#fff"
+                              textStyle={{ fontSize: 20 }}
+                              onTimeElapsed={() => this.setState({calibration: false})}/>
+                      <Text style={styles.caliInfo}>Calibrating sensors....</Text>
+                  </View>}
                   <Button
-                      onPress={() => this.toggleRecording()}
+                      onPress={async () => await this.toggleRecording()}
                       title={this.state.recording ? 'Stop Recording' : 'Start recording'}
                       color={colours.mainColour}/>
                   <View style={styles.spacer}/>
                   <Button
-                      onPress={() => this.toggleVisible()}
+                      onPress={async () => await this.toggleVisible()}
                       title={'Close'}
                       color={colours.mainColour}/>
               </View>
@@ -310,5 +326,13 @@ const styles = StyleSheet.create({
     },
     spacer: {
         height: 20,
+    },
+    caliContainer: {
+        alignItems: 'center'
+    },
+    caliInfo: {
+        marginVertical: 10,
+        fontSize: 15,
+        textAlign: 'center'
     }
 });

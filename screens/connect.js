@@ -9,14 +9,17 @@ import {
     TouchableNativeFeedback,
     ActivityIndicator
 } from 'react-native';
-import BluetoothSerial  from 'react-native-bluetooth-serial'
-import * as colours from '../colours'
+import BluetoothSerial  from 'react-native-bluetooth-serial';
+import * as colours from '../colours';
+import Records from '../store/records';
 import LottieView from 'lottie-react-native';
 import BusyIndicator from 'react-native-busy-indicator';
 import loaderHandler from 'react-native-busy-indicator/LoaderHandler';
+import {observer} from "mobx-react/native";
 
 type Props = {};
 
+@observer
 export default class Connect extends Component<Props> {
 
     static navigationOptions = {
@@ -99,9 +102,9 @@ export default class Connect extends Component<Props> {
         loaderHandler.showLoader('Connecting to item...');
         setTimeout(async () => {
             try {
-                let res = await BluetoothSerial.connect(item.id);
+                if (!Records.TEST)
+                    await BluetoothSerial.connect(item.id);
                 loaderHandler.hideLoader();
-
                 this.props.navigation.navigate('Control');
             } catch (err) {
                 console.log(err);

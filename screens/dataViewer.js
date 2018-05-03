@@ -43,7 +43,7 @@ export default class DataView extends React.Component {
                             orientation="horizontal"
                             gutter={20}
                             itemsPerRow={3}
-                            style={{ border: { stroke: "black" }, title: {fontSize: 10 } }}
+                            style={{ border: { stroke: "black" }, title: { fontSize: 10 } }}
                             data={[
                                 { name: "1", symbol: { fill: "#c43a31" } },
                                 { name: "2", symbol: { fill: "#37c469" } },
